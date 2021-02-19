@@ -1,0 +1,106 @@
+<form theme="light">
+  <label>IMDB Dataset</label>
+  <search id="base_search">
+    <query>
+      source="movies.csv" | table movieId,title,genres | eval gen_ind=split(genres, "|") | rex field=title "\((?&lt;field&gt;\d+)\)" | mvexpand gen_ind | rename field as year | fillnull value="Not Defined" year,gen_ind |
+      search year= $form.release_year$ gen_ind= $form.genreInd$ genres="$form.genres$"
+    </query>
+  </search>
+  <fieldset submitButton="true" autoRun="true">
+    <input type="dropdown" token="release_year" searchWhenChanged="false">
+      <label>Release Year</label>
+      <search base="base_search">
+        <query> | stats count by year</query>
+      </search>
+      <choice value="*">All</choice>
+      <default>*</default>
+      <initialValue>*</initialValue>
+      <fieldForLabel>year</fieldForLabel>
+      <fieldForValue>year</fieldForValue>
+    </input>
+    <input type="dropdown" token="genreInd" searchWhenChanged="false">
+      <label>Genre</label>
+      <search base="base_search">
+        <query> | stats count by gen_ind</query>
+      </search>
+      <choice value="*">All</choice>
+      <default>*</default>
+      <initialValue>*</initialValue>
+      <fieldForLabel>gen_ind</fieldForLabel>
+      <fieldForValue>gen_ind</fieldForValue>
+    </input>
+    <input type="text" token="genres" depends="$hidden$"><default>*</default></input>
+  </fieldset>
+  <row>
+    <panel>
+      <single>
+        <title>Total Movies</title>
+        <search base="base_search">
+          <query>| search year=$release_year$ gen_ind=$genreInd$|dedup movieId | stats count</query>
+        </search>
+        <option name="colorMode">block</option>
+        <option name="drilldown">none</option>
+        <option name="rangeColors">["0x53a051","0x006d9c","0xf8be34","0xf1813f","0x006d9c"]</option>
+        <option name="underLabel">Total Movies</option>
+        <option name="useColors">1</option>
+      </single>
+    </panel>
+  </row>
+  <row>
+    <panel>
+      <chart>
+        <title>Year wise Breakup</title>
+        <search base="base_search">
+          <query>| search year=$release_year$ gen_ind=$genreInd$ | dedup movieId | stats count by year</query>
+        </search>
+        <option name="charting.chart">pie</option>
+        <option name="charting.drilldown">all</option>
+        <drilldown>
+          <set token="form.release_year">$click.value$</set>
+        </drilldown>
+      </chart>
+    </panel>
+    <panel>
+      <chart>
+        <title>Genre wise Pickup</title>
+        <search base="base_search">
+          <query>| search year=$release_year$ gen_ind=$genreInd$ | dedup movieId | stats count by gen_ind</query>
+        </search>
+        <option name="charting.chart">pie</option>
+        <option name="charting.drilldown">all</option>
+        <drilldown>
+          <set token="form.genreInd">$click.value$</set>
+        </drilldown>
+      </chart>
+    </panel>
+  </row>
+  <row>
+    <panel>
+      <table>
+        <title>Movie Details</title>
+        <search base="base_search">
+          <query>| search year=$release_year$ gen_ind=$genreInd$| dedup movieId | fields - gen_ind</query>
+        </search>
+        <option name="drilldown">cell</option>
+        <drilldown>
+          <condition field="year">
+            <set token="form.release_year">$click.value2$</set>
+          </condition>
+          <condition field="genres">
+            <set token="form.genres">$click.value2$</set>
+            <set token="form.show_clear_filter">*</set>
+          </condition>
+          <condition field="movieId">
+          </condition>
+          <condition field="title">
+          </condition>
+        </drilldown>
+      </table>
+      <html depends="$form.show_clear_filter$">
+        <p>
+          <a href="#" data-set-token="form.genres" data-value="*" data-unset-token="form.show_clear_filter" class="btn btn-secondary clear-filter">Clear filter</a>
+        </p>
+      </html>
+    </panel>
+  </row>
+</form>
